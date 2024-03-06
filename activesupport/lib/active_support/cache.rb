@@ -327,7 +327,15 @@ module ActiveSupport
           instrument(:read, name, options) do |payload|
             cached_entry = read_entry(key, **options, event: payload) unless options[:force]
             entry = handle_expired_entry(cached_entry, key, options)
-            entry = nil if entry && entry.mismatched?(normalize_version(name, options))
+
+            entry_is_corrupted = false
+            begin
+              entry.value
+            rescue
+              entry_is_corrupted = true
+            end
+
+            entry = nil if entry && (entry_is_corrupted || entry.mismatched?(normalize_version(name, options)))
             payload[:super_operation] = :fetch if payload
             payload[:hit] = !!entry if payload
           end
